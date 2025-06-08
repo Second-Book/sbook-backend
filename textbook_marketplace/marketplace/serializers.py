@@ -5,6 +5,19 @@ from django.contrib.auth import get_user_model
 
 from .models import Textbook, Order, Report
 from versatileimagefield.serializers import VersatileImageFieldSerializer
+from django.conf import settings
+from urllib.parse import urljoin
+
+
+class AbsoluteVersatileImageFieldSerializer(VersatileImageFieldSerializer):
+    def to_representation(self, value):
+        data = super().to_representation(value)
+        if isinstance(data, dict):
+            return {
+                key: urljoin(settings.MEDIA_HOST, url)
+                for key, url in data.items()
+            }
+        return data
 
 
 User = get_user_model()
@@ -12,9 +25,8 @@ User = get_user_model()
 
 class TextbookSerializer(serializers.ModelSerializer):
     seller = serializers.ReadOnlyField(source='seller.username')
-    image = VersatileImageFieldSerializer(
-        sizes='marketplace',
-    )
+    image = AbsoluteVersatileImageFieldSerializer(sizes='marketplace')
+
 
     class Meta:
         model = Textbook
@@ -71,3 +83,4 @@ class ReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = Report
         fields = ['user_reported', 'topic', 'description', 'created_at']
+

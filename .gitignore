@@ -169,3 +169,4 @@ cython_debug/
 uv.lock
 
 /textbook_marketplace/media/
+/textbook_marketplace/staticfiles/

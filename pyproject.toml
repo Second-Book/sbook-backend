@@ -26,7 +26,8 @@ dependencies = [
     "channels[daphne]==4.2.0",
     "channels-redis==4.2.1",
     "django-channels-jwt-auth-middleware==1.0.0",
-    "gunicorn==21.2.0 ; os_name == 'posix'",
+    "gunicorn==21.2.0 ; 
+
 ]
 
 [dependency-groups]

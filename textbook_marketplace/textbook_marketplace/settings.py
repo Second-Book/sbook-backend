@@ -29,7 +29,7 @@ SECRET_KEY = config('DJANGO_SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', '[::1]', 'localhost', '192.168.0.44:8080', '127.0.0.1:8000']
+ALLOWED_HOSTS = ['127.0.0.1', '[::1]', 'localhost', '192.168.0.44:8080', '127.0.0.1:8000', '82.146.48.165', 'sb.maria.rezvov.com', 'api.sb.maria.rezvov.com']
 # Application definition
 
 INSTALLED_APPS = [
@@ -143,6 +143,12 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = "static/"
+STATIC_ROOT = config('STATIC_ROOT', default=os.path.join(BASE_DIR, 'staticfiles'))
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_HOST = config("MEDIA_HOST", default="http://127.0.0.1:8000")
+
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
@@ -189,10 +195,6 @@ CHANNEL_LAYERS = {
     }
 
 # This is where uploaded files will be stored
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-
-# This is the URL that serves the media files
-MEDIA_URL = '/media/'
 
 # AUTHENTICATION_BACKENDS = (
 #     'allauth.account.auth_backends.AuthenticationBackend',
@@ -219,3 +221,4 @@ VERSATILEIMAGEFIELD_RENDITION_KEY_SETS = {
 VERSATILEIMAGEFIELD_SETTINGS = {
     'jpeg_resize_quality': 90,
 }
+
