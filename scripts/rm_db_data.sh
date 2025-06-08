@@ -46,7 +46,11 @@ echo "$RM_ROWS_USERS_RES"
 
 echo "Cleaning marketplace_order table"
 RM_ROWS_ORDERS_RES=$(psql -h $DB_HOST -p $DB_PORT -d $DB_NAME -U $DB_USER -c "TRUNCATE TABLE marketplace_order CASCADE;")
-echo "$RM_RM_ROWS_ORDERS_RES"
+echo "$RM_ROWS_ORDERS_RES"
+
+echo "Cleaning chat_message table"
+RM_ROWS_MESSAGES_RES=$(psql -h $DB_HOST -p $DB_PORT -d $DB_NAME -U $DB_USER -c "TRUNCATE TABLE chat_message CASCADE;")
+echo "$RM_ROWS_MESSAGES_RES"
 
 echo "Unsetting PGPASSWORD var..."
 unset PGPASSWORD

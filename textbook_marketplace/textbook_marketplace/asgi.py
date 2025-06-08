@@ -1,7 +1,25 @@
 import os
 
-from django.core.asgi import get_asgi_application
+from django_channels_jwt_auth_middleware.auth import JWTAuthMiddlewareStack
+from django.core.asgi import get_asgi_application  # DEBUG
+from channels.security.websocket import AllowedHostsOriginValidator
+from channels.routing import (
+    ProtocolTypeRouter,
+    URLRouter,
+)
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "textbook_marketplace.settings")
+from chat import routing
 
-application = get_asgi_application()
+os.environ.setdefault("DJANGO_SETTINGS_MODULE",
+                      "textbook_marketplace.settings")
+
+application = ProtocolTypeRouter({
+    "http": get_asgi_application(),  # DEBUG
+    "websocket": AllowedHostsOriginValidator(
+        JWTAuthMiddlewareStack(
+            URLRouter(
+                routing.websocket_urlpatterns,
+            )
+        )
+    )
+})

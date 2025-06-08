@@ -1,6 +1,9 @@
+from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 
-from .models import Textbook, User, Order 
+from django.contrib.auth import get_user_model
+
+from .models import Textbook, Order, Report
 from versatileimagefield.serializers import VersatileImageFieldSerializer
 from django.conf import settings
 from urllib.parse import urljoin
@@ -15,6 +18,9 @@ class AbsoluteVersatileImageFieldSerializer(VersatileImageFieldSerializer):
                 for key, url in data.items()
             }
         return data
+
+
+User = get_user_model()
 
 
 class TextbookSerializer(serializers.ModelSerializer):
@@ -57,4 +63,24 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = '__all__'
+
+
+class ReportSerializer(serializers.ModelSerializer):
+    user_reported = serializers.CharField()
+    topic = serializers.CharField()
+    description = serializers.CharField()
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        user = request.user
+        reported_username = validated_data.pop('user_reported', '')
+        reported_user = get_object_or_404(User, username=reported_username)
+        report = Report.objects.create(
+            user=user, user_reported=reported_user, **validated_data
+        )
+        return report
+
+    class Meta:
+        model = Report
+        fields = ['user_reported', 'topic', 'description', 'created_at']
 
