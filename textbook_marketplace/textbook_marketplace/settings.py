@@ -146,7 +146,7 @@ STATIC_URL = "static/"
 STATIC_ROOT = config('STATIC_ROOT', default=os.path.join(BASE_DIR, 'staticfiles'))
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = config("MEDIA_ROOT", default=os.path.join(BASE_DIR, "media"))
 MEDIA_HOST = config("MEDIA_HOST", default="http://127.0.0.1:8000")
 
 
