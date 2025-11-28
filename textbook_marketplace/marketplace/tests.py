@@ -127,7 +127,7 @@ def test_textbooks_retrieve_success(seller: User,
                                     client: APIClient):
     response: Response = client.get(reverse('textbook-list'))
     assert response.status_code == 200
-    data = response.data
+    data = response.data['results']
     assert len(data) == 3
     test_textbook = data[0]
     assert test_textbook['id'] == 1
@@ -183,6 +183,7 @@ def test_textbook_create_success(seller: User,
               'author': 'Alice Johnson',
               'school_class': '12th Grade',
               'publisher': 'Science Publishers',
+              'subject': 'Science',
               'price': 49.99,
               'seller': seller.username,
               'description': 'An advanced science textbook.',
