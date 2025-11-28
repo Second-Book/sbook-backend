@@ -9,11 +9,14 @@ class Message(models.Model):
     """ Model for messages in user chats. """
     sender = models.ForeignKey(User,
                                related_name='message_sender',
-                               on_delete=models.SET(AnonymousUser.id))
+                               on_delete=models.SET(AnonymousUser.id),
+                               to_field="username")
     recipient = models.ForeignKey(User,
                                   related_name='message_recipient',
-                                  on_delete=models.SET(AnonymousUser.id))
+                                  on_delete=models.SET(AnonymousUser.id),
+                                  to_field="username")
     text = models.TextField()
+    seen = models.BooleanField(default=False)
     sent_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
