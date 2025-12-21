@@ -4,70 +4,70 @@ overview: Create a detailed development roadmap document (improvement-plan.md) f
 todos:
   - id: security-config
     content: Fix CORS, DEBUG, password validators in backend settings
-    status: pending
+    status: completed
   - id: rate-limiting
     content: Add django-ratelimit to auth endpoints
-    status: pending
+    status: completed
   - id: input-validation
     content: Add price/email validation and XSS sanitization
-    status: pending
+    status: completed
   - id: user-serializer
     content: Fix UserSerializer to expose only safe fields
-    status: pending
+    status: completed
   - id: token-storage
     content: Make frontend token handling SSR-safe
-    status: pending
+    status: completed
   - id: websocket-block
     content: Fix is_blocked() to check specific recipient
-    status: pending
+    status: completed
   - id: remove-duplicates
     content: Remove duplicate ViewSets and custom permission
-    status: pending
+    status: completed
   - id: db-indexes
     content: Add database indexes on frequently queried fields
-    status: pending
+    status: completed
   - id: homepage
     content: Implement homepage with search bar and latest textbooks
-    status: pending
+    status: completed
   - id: textbook-detail
     content: Complete textbook detail page with contacts
-    status: pending
+    status: completed
   - id: chat-ui
     content: Implement WebSocket client and chat UI
-    status: pending
+    status: completed
   - id: edit-delete-listings
     content: Add edit/delete functionality for user listings
-    status: pending
+    status: completed
   - id: about-faq
     content: Create About/FAQ page
-    status: pending
+    status: completed
   - id: 404-page
     content: Create custom 404 error page
-    status: pending
+    status: completed
   - id: loading-states
     content: Add skeleton loaders and loading indicators
-    status: pending
+    status: completed
   - id: toast-notifications
     content: Add react-hot-toast for user feedback
-    status: pending
+    status: completed
   - id: pagination-ui
     content: Implement pagination component
-    status: pending
+    status: completed
   - id: image-upload
     content: Add image upload with preview
-    status: pending
+    status: completed
   - id: frontend-tests
     content: Setup Jest and write component tests
-    status: pending
+    status: completed
   - id: e2e-tests
     content: Setup Playwright and write E2E tests
-    status: pending
+    status: completed
   - id: api-docs
     content: Add drf-spectacular for Swagger docs
-    status: pending
+    status: completed
   - id: structured-logging
     content: Add structlog for JSON logging
-    status: pending
+    status: completed
 ---
 
 # Plan: SecondBook Platform Improvement
