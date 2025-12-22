@@ -2,12 +2,13 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 
 from django.contrib.auth import get_user_model
-from django.db.models import Q
+from django.db.models import Q, ObjectDoesNotExist
 
 import json
-from typing import Any
+from typing import List
 
 from .models import Message
+from .serializers import MessageSerializer
 from marketplace.models import Block
 
 User = get_user_model()
@@ -22,15 +23,28 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if not self.user.is_authenticated:
             await self.close(code=4003)
             return
-        self.room_name: str = self.scope['url_route']['kwargs']['room_name']
-        self.room_group_name: str = f'chat_{self.room_name}'
+        self.room_group_name: str = f'personal_{self.user.username}'
         await self.channel_layer.group_add(channel=self.channel_name,
                                            group=self.room_group_name)
         await self.accept()
+        unseen_messages: List[Message] = await self.retrieve_unseen_messages(
+            self.user
+        )
+        await self.send(text_data=json.dumps(
+            {'type': 'notification',
+             'new_messages': unseen_messages}
+        ))
 
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(channel=self.channel_name,
-                                               group=self.room_group_name)
+        if hasattr(self, 'room_group_name'):
+            await self.channel_layer.group_discard(channel=self.channel_name,
+                                                   group=self.room_group_name)
+
+    @database_sync_to_async
+    def retrieve_unseen_messages(self, user: User) -> List[Message]:
+        query = user.message_recipient.filter(seen=False)
+        serializer = MessageSerializer(query, many=True)
+        return serializer.data
 
     @database_sync_to_async
     def save_message(self, text: str, recipient: User) -> None:
@@ -41,16 +55,20 @@ class ChatConsumer(AsyncWebsocketConsumer):
         message.save()
 
     @database_sync_to_async
-    def is_blocked_or_get_recipient(self,
-                                    recipient_username: str) -> tuple[bool, Any]:
-        """ Checks if there is a block between sender and recipient.
-        Returns recipient user alongside with bool value if no block found. """
-        block_exist = Block.objects.filter(
-            Q(initiator_user=self.user) | Q(blocked_user=self.user)
+    def is_blocked(self, recipient: User) -> bool:
+        """Check if sender blocked recipient OR recipient blocked sender."""
+        return Block.objects.filter(
+            Q(initiator_user=recipient, blocked_user=self.user) |
+            Q(initiator_user=self.user, blocked_user=recipient)
         ).exists()
-        if block_exist:
-            return True, None
-        return False, User.objects.get(username=recipient_username)
+
+    @staticmethod
+    @database_sync_to_async
+    def get_user_by_username(username: str) -> User | None:
+        try:
+            return User.objects.get(username=username)
+        except ObjectDoesNotExist:
+            return None
 
     async def receive(self, text_data: str):
         """ Receives message, then sends it to the group and calls
@@ -59,42 +77,54 @@ class ChatConsumer(AsyncWebsocketConsumer):
         text_data_json: dict[str: str] = json.loads(text_data)
         message: str = text_data_json['message']
         recipient_username: str = text_data_json['recipient']
-        is_blocked, recipient = await self.is_blocked_or_get_recipient(
-            recipient_username=recipient_username
-        )
-        if is_blocked:
+        recipient = await self.get_user_by_username(username=recipient_username)
+        
+        if recipient is None:
             await self.send(text_data=json.dumps(
-                {'type': 'notification',
-                 'message': 'You cannot message this user due to block.',
-                 }))
+                {'type': 'error',
+                 'message': f'No such user found with username '
+                            f'{recipient_username}.',
+                 'sender': self.user.username}
+            ))
             return
+        
+        if await self.is_blocked(recipient):
+            await self.send(text_data=json.dumps({
+                'type': 'error',
+                'message': 'You cannot message this user due to a block.',
+                'sender': self.user.username
+            }))
+            return
+        
         await self.save_message(text=message,
                                 recipient=recipient)
+
+        # send message to recipient ws room
         await self.channel_layer.group_send(
-            self.room_group_name,
+            f'personal_{recipient_username}',
             {'type': 'chat_message',
              'message': message,
              'sender': self.user.username,
              'recipient': recipient_username,
              }
         )
+        await self.send(text_data=json.dumps(
+                {'type': 'message',
+                 'message': message,
+                 'sender': self.user.username,
+                 'recipient': recipient_username,
+                 }
+            ))
 
     async def chat_message(self, event) -> None:
-        """ Sends chat message to all users in group. """
+        """ Sends chat message to user in group. """
         message: str = event['message']
         sender: str = event['sender']
         recipient: str = event['recipient']
 
         await self.send(text_data=json.dumps({
+            'type': 'message',
             'message': message,
             'sender': sender,
             'recipient': recipient
-        }))
-
-    # Called with self.channel_layer.group_send
-    async def notification(self, event):
-        """ Sends notification only to self.user. """
-        message: str = event['message']
-        await self.send(text_data=json.dumps({
-            'message': message,
         }))

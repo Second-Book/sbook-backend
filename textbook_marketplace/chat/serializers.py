@@ -8,4 +8,4 @@ class MessageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Message
-        fields = ['sender', 'recipient', 'text', 'sent_at']
+        fields = '__all__'

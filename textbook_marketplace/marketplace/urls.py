@@ -1,31 +1,35 @@
 # backend/textbook_marketplace/marketplace/urls.py
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 
 from rest_framework_simplejwt.views import (
-    TokenRefreshView,
     TokenVerifyView,
 )
 
 from .views import (
-    TextbookListViewSet,
+    HealthCheckView,
     TextbookDetailView,
     TextbookImageView,
     ProtectedView,
     SignupView,
     CustomTokenObtainPairView,
+    CustomTokenRefreshView,
     TextbookViewSet,
     UserDetailView,
     BlockView,
     ReportView,
 )
 
+router = DefaultRouter()
+router.register(r'textbooks', TextbookViewSet, basename='textbook')
+
 urlpatterns = [
-    path('textbooks/', TextbookListViewSet.as_view({'get': 'list'}), name='textbook-list'),
+    path('health/', HealthCheckView.as_view(), name='health'),
+    path('', include(router.urls)),
     path('textbook/<int:pk>/', TextbookDetailView.as_view(), name='textbook-detail'),
     path('textbook/<int:pk>/image/', TextbookImageView.as_view()),
-    path('textbook/create/', TextbookViewSet.as_view({'post': 'create'}), name='textbook-create'),
     path('token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('token/refresh/', CustomTokenRefreshView.as_view(), name='token_refresh'),
     path('token/verify/', TokenVerifyView.as_view(), name='token_verify'),
     path('protected/', ProtectedView.as_view(), name='protected'),
     path('signup/', SignupView.as_view(), name='signup'),

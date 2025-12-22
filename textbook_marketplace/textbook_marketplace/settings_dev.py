@@ -27,8 +27,7 @@ from decouple import config
 SECRET_KEY = config('DJANGO_SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-# Production settings
-DEBUG = config('DEBUG', default=False, cast=bool)
+DEBUG = True
 
 ALLOWED_HOSTS = ['127.0.0.1', '[::1]', 'localhost', '192.168.0.44:8080', '127.0.0.1:8000', '82.146.48.165', 'sb.maria.rezvov.com', 'api.sb.maria.rezvov.com']
 # Application definition
@@ -46,13 +45,12 @@ INSTALLED_APPS = [
     # 'allauth',
     # 'allauth.account',
     # 'allauth.socialaccount',
-    # 'allauth.socialaccount.providers.google', 
+    # 'allauth.socialaccount.providers.google',
     # 'rest_framework.authtoken',
     "django_filters",
     "rest_framework",
     "rest_framework_simplejwt",
     "corsheaders",
-    "drf_spectacular",
     "marketplace",
     "versatileimagefield",
     "chat",
@@ -98,12 +96,7 @@ ASGI_APPLICATION = "textbook_marketplace.asgi.application"
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DB_NAME'),
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
-        'HOST': config('DB_HOST'),
-        'PORT': config('DB_PORT', default='5432'),  # Значение по умолчанию для порта
+        'ENGINE': 'django.db.backends.sqlite3',
     }
 }
 
@@ -119,7 +112,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
-        "OPTIONS": {"min_length": 8},
     },
     {
         "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
@@ -176,21 +168,16 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 20,
     'DEFAULT_FILTER_BACKENDS':
         ['django_filters.rest_framework.DjangoFilterBackend'],
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
-SPECTACULAR_SETTINGS = {
-    'TITLE': 'SecondBook API',
-    'DESCRIPTION': 'Textbook marketplace API',
-    'VERSION': '1.0.0',
-}
-
-CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [
-    config('FRONTEND_URL', default='http://localhost:3000'),
+    "http://192.168.0.44:8080",
+    "http://localhost:8080",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOW_ALL_ORIGINS = True
 
 # WebSocket connections storage
 CHANNEL_LAYERS = {
@@ -201,6 +188,11 @@ CHANNEL_LAYERS = {
             },
         },
     }
+# CHANNEL_LAYERS = {
+#     'default': {
+#         'BACKEND': 'channels.layers.InMemoryChannelLayer',
+#     },
+# }
 
 # This is where uploaded files will be stored
 
@@ -210,8 +202,7 @@ CHANNEL_LAYERS = {
 
 SITE_ID = 1
 
-# Password validators are already defined above (lines 114-127)
-# AUTH_PASSWORD_VALIDATORS removed - using the one defined earlier
+AUTH_PASSWORD_VALIDATORS = []
 
 SIMPLE_JWT = {
     'USER_MODEL': 'marketplace.User',
@@ -230,46 +221,4 @@ VERSATILEIMAGEFIELD_RENDITION_KEY_SETS = {
 VERSATILEIMAGEFIELD_SETTINGS = {
     'jpeg_resize_quality': 90,
 }
-
-# Structured logging configuration
-import structlog
-
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'json': {
-            '()': structlog.stdlib.ProcessorFormatter,
-            'processor': structlog.processors.JSONRenderer(),
-        },
-    },
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'json',
-        },
-    },
-    'root': {
-        'handlers': ['console'],
-        'level': 'INFO',
-    },
-}
-
-structlog.configure(
-    processors=[
-        structlog.stdlib.filter_by_level,
-        structlog.stdlib.add_logger_name,
-        structlog.stdlib.add_log_level,
-        structlog.stdlib.PositionalArgumentsFormatter(),
-        structlog.processors.TimeStamper(fmt="iso"),
-        structlog.processors.StackInfoRenderer(),
-        structlog.processors.format_exc_info,
-        structlog.processors.UnicodeDecoder(),
-        structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
-    ],
-    context_class=dict,
-    logger_factory=structlog.stdlib.LoggerFactory(),
-    wrapper_class=structlog.stdlib.BoundLogger,
-    cache_logger_on_first_use=True,
-)
 
