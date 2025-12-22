@@ -1,5 +1,6 @@
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 from django.contrib.auth import get_user_model
 
@@ -7,6 +8,7 @@ from .models import Textbook, Order, Report
 from versatileimagefield.serializers import VersatileImageFieldSerializer
 from django.conf import settings
 from urllib.parse import urljoin
+import bleach
 
 
 class AbsoluteVersatileImageFieldSerializer(VersatileImageFieldSerializer):
@@ -26,11 +28,21 @@ User = get_user_model()
 class TextbookSerializer(serializers.ModelSerializer):
     seller = serializers.ReadOnlyField(source='seller.username')
     image = AbsoluteVersatileImageFieldSerializer(sizes='marketplace')
-
+    price = serializers.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        validators=[MinValueValidator(0.01), MaxValueValidator(99999.99)]
+    )
 
     class Meta:
         model = Textbook
         fields = '__all__'
+    
+    def validate_description(self, value):
+        # Sanitize HTML/XSS
+        if value:
+            return bleach.clean(value, tags=[], strip=True)
+        return value
         
     def create(self, validated_data):
         request = self.context.get('request')
@@ -42,14 +54,23 @@ class TextbookSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = '__all__'
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 
+                  'telegram_id', 'telephone', 'is_seller', 'date_joined']
+        read_only_fields = ['id', 'date_joined']
 
 
 class SignupSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(required=True)
+    
     class Meta:
         model = User
         fields = ['username', 'email', 'password']
         extra_kwargs = {'password': {'write_only': True}}
+
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("Email already registered")
+        return value
 
     def create(self, validated_data):
         user = User.objects.create_user(**validated_data)

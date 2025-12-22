@@ -54,15 +54,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
         message.save()
 
     @database_sync_to_async
-    def is_blocked(self) -> bool:
-        """ Checks if there is a block between sender and recipient.
-        Returns recipient user alongside with bool value if no block found. """
-        block_exist = Block.objects.filter(
-            Q(initiator_user=self.user) | Q(blocked_user=self.user)
+    def is_blocked(self, recipient: User) -> bool:
+        """Check if sender blocked recipient OR recipient blocked sender."""
+        return Block.objects.filter(
+            Q(initiator_user=recipient, blocked_user=self.user) |
+            Q(initiator_user=self.user, blocked_user=recipient)
         ).exists()
-        if block_exist:
-            return True
-        return False
 
     @staticmethod
     @database_sync_to_async
@@ -80,13 +77,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         message: str = text_data_json['message']
         recipient_username: str = text_data_json['recipient']
         recipient = await self.get_user_by_username(username=recipient_username)
-        if await self.is_blocked():
-            await self.send(text_data=json.dumps(
-                {'type': 'error',
-                 'message': 'You cannot message this user due to a block.',
-                 'sender': self.user.username
-                 }))
-            return
+        
         if recipient is None:
             await self.send(text_data=json.dumps(
                 {'type': 'error',
@@ -95,6 +86,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
                  'sender': self.user.username}
             ))
             return
+        
+        if await self.is_blocked(recipient):
+            await self.send(text_data=json.dumps({
+                'type': 'error',
+                'message': 'You cannot message this user due to a block.',
+                'sender': self.user.username
+            }))
+            return
+        
         await self.save_message(text=message,
                                 recipient=recipient)
 

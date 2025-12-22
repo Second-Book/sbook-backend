@@ -2,14 +2,16 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
 from rest_framework import status, viewsets, permissions
-from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework.decorators import action, api_view
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework.permissions import (
     IsAuthenticated,
+    IsAuthenticatedOrReadOnly,
     BasePermission,
-    SAFE_METHODS,
 )
+from django_ratelimit.decorators import ratelimit
+from django.utils.decorators import method_decorator
 
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
@@ -28,20 +30,6 @@ User = get_user_model()
 
 
 # TODO add logging
-
-
-class IsAuthenticatedOrReadOnly(BasePermission):  # TODO DELETE THIS
-    """ Prohibits unauthorized users from making CUD operations. """
-    def has_permission(self, request, view):
-        if request.method in SAFE_METHODS:
-            return True
-        return request.user.is_authenticated
-
-
-class TextbookListViewSet(ModelViewSet):
-    queryset = Textbook.objects.all()
-    serializer_class = TextbookSerializer
-    filterset_class = TextbookFilter
 
 
 class TextbookDetailView(APIView):
@@ -68,6 +56,7 @@ class ProtectedView(APIView):
 
 
 class SignupView(APIView):
+    @method_decorator(ratelimit(key='ip', rate='5/m', method='POST', block=True))
     def post(self, request):
         serializer = SignupSerializer(data=request.data)
         if serializer.is_valid():
@@ -90,23 +79,41 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     """ Returns refresh_token and access_token, tied to a user. """
     serializer_class = TokenObtainPairSerializer
 
+    @method_decorator(ratelimit(key='ip', rate='10/m', method='POST', block=True))
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
+
     def get_queryset(self):
         return User.objects.all()
 
 
+class CustomTokenRefreshView(TokenRefreshView):
+    """ Token refresh view with rate limiting. """
+    
+    @method_decorator(ratelimit(key='ip', rate='20/m', method='POST', block=True))
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
+
+
+class IsOwner(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        return obj.seller == request.user
+
+
 class TextbookViewSet(viewsets.ModelViewSet):
+    """Unified ViewSet for all textbook operations."""
     queryset = Textbook.objects.all()
     serializer_class = TextbookSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-
-    @action(detail=False, methods=['post'])
-    def create_textbook(self, request):
-        serializer = TextbookSerializer(data=request.data,
-                                        context={'request': request})
-        if serializer.is_valid():
-            serializer.save(seller=request.user)
-            return Response(serializer.data, status=201)
-        return Response(serializer.errors, status=400)
+    permission_classes = [IsAuthenticatedOrReadOnly]
+    filterset_class = TextbookFilter
+    
+    def get_permissions(self):
+        if self.action in ['update', 'partial_update', 'destroy']:
+            return [IsAuthenticated(), IsOwner()]
+        return super().get_permissions()
+    
+    def perform_create(self, serializer):
+        serializer.save(seller=self.request.user)
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -182,6 +189,7 @@ class ReportView(APIView):
      Reports can then be seen through admin panel. """
     permission_classes = [IsAuthenticated]
 
+    @method_decorator(ratelimit(key='ip', rate='3/m', method='POST', block=True))
     def post(self, request):
         serializer = ReportSerializer(data=request.data,
                                       context={'request': request})

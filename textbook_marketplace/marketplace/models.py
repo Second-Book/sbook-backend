@@ -29,11 +29,12 @@ class Textbook(models.Model):
 
     title = models.CharField(max_length=255)
     author = models.CharField(max_length=255)
-    school_class = models.CharField(max_length=50) 
+    school_class = models.CharField(max_length=50, db_index=True) 
     publisher = models.CharField(max_length=255)
-    subject = models.CharField(max_length=255)
+    subject = models.CharField(max_length=255, db_index=True)
     price = models.DecimalField(max_digits=6, decimal_places=2)
-    seller = models.ForeignKey(User, on_delete=models.CASCADE, related_name="textbooks")
+    seller = models.ForeignKey(User, on_delete=models.CASCADE, 
+                               related_name="textbooks", db_index=True)
     description = models.TextField(blank=True)
     whatsapp_contact = models.CharField(max_length=100, blank=True, null=True)
     viber_contact = models.CharField(max_length=100, blank=True, null=True)
@@ -41,8 +42,15 @@ class Textbook(models.Model):
     phone_contact = models.CharField(max_length=100, blank=True, null=True)
     condition = models.CharField(max_length=50, choices=CONDITION_CHOICES, default='Used - Good')
     image = VersatileImageField(upload_to='textbook_images/', blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)  
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)  
     updated_at = models.DateTimeField(auto_now=True) 
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['price']),
+            models.Index(fields=['condition']),
+            models.Index(fields=['-created_at']),
+        ]
 
     def __str__(self):
         return self.title
