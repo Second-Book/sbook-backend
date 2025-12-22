@@ -36,8 +36,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
         ))
 
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(channel=self.channel_name,
-                                               group=self.room_group_name)
+        if hasattr(self, 'room_group_name'):
+            await self.channel_layer.group_discard(channel=self.channel_name,
+                                                   group=self.room_group_name)
 
     @database_sync_to_async
     def retrieve_unseen_messages(self, user: User) -> List[Message]:
