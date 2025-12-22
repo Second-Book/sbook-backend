@@ -32,6 +32,13 @@ User = get_user_model()
 # TODO add logging
 
 
+class HealthCheckView(APIView):
+    """Health check endpoint for monitoring."""
+    
+    def get(self, request):
+        return Response({"status": "ok"}, status=status.HTTP_200_OK)
+
+
 class TextbookDetailView(APIView):
 
     def get(self, request, pk):

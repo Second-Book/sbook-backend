@@ -9,7 +9,6 @@ MUST install:
 - Python 3.12
 - uv package manager
 - Docker and docker-compose
-- PostgreSQL client (psql) for database scripts
 
 ## Environment Setup
 
@@ -22,7 +21,7 @@ cp env.example .env
 Update `.env` with actual values. MUST set `DJANGO_SECRET_KEY`:
 
 ```bash
-python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'
+uv run python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'
 ```
 
 Required variables:
@@ -74,35 +73,35 @@ Verify containers running:
 
 ## Superuser Creation
 
-Use script (Windows Git Bash):
-
-```bash
-bash scripts/gen_suser.sh
-```
-
-Manual creation:
+Create superuser:
 
 ```bash
 uv run python textbook_marketplace/manage.py createsuperuser
 ```
 
-Default credentials: `username=root`, `email=root@example.com`.
-
 ## Test Data Generation
 
-Generate N users, textbooks, and messages:
+Generate realistic test data (users, textbooks, messages, orders, blocks, reports):
 
 ```bash
-bash scripts/gen_fake_data.sh N
+uv run python textbook_marketplace/manage.py generate_realistic_data --textbooks 1000
 ```
 
-Clean database and regenerate:
+For 1000 textbooks, this generates:
+- ~333 users (60% sellers, 40% buyers)
+- 1000 textbooks
+- ~800-1000 messages
+- ~50-80 user blocks
+- ~30-50 reports
+- ~100-150 orders
+
+Custom textbook count:
 
 ```bash
-bash scripts/clean_and_gen.sh N
+uv run python textbook_marketplace/manage.py generate_realistic_data --textbooks N
 ```
 
-Individual commands:
+Individual commands (if needed):
 
 ```bash
 uv run python textbook_marketplace/manage.py generate_fake_users N
@@ -112,13 +111,7 @@ uv run python textbook_marketplace/manage.py generate_fake_messages N
 
 ## Running Server
 
-Development:
-
-```bash
-bash scripts/run.sh
-```
-
-Or directly:
+Start development server:
 
 ```bash
 uv run python textbook_marketplace/manage.py runserver
@@ -127,6 +120,12 @@ uv run python textbook_marketplace/manage.py runserver
 Server runs on `http://127.0.0.1:8000`.
 
 Settings: `textbook_marketplace.settings_dev` (dev) or `textbook_marketplace.settings` (production).
+
+## Admin Panel
+
+Django admin panel: `http://127.0.0.1:8000/admin/`
+
+MUST create superuser before accessing admin panel (see Superuser Creation section).
 
 ## API Testing with curl
 
@@ -150,7 +149,7 @@ curl -X POST http://127.0.0.1:8000/api/token/ \
   -d '{"username": "testuser", "password": "testpass123"}'
 ```
 
-Response includes `access` and `refresh` tokens.
+Response includes `access` and `refresh` tokens. Use `access` token for API requests. Use `refresh` token to get new access token when it expires.
 
 ### Get Textbooks
 
@@ -180,15 +179,11 @@ curl http://127.0.0.1:8000/api/users/me/ \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
+Note: MUST use `access` token (not `refresh` token) for authenticated requests.
+
 ## Testing
 
 Run tests:
-
-```bash
-bash scripts/run_tests.sh
-```
-
-Or directly:
 
 ```bash
 cd textbook_marketplace
@@ -196,17 +191,6 @@ uv run pytest
 ```
 
 Test location: `textbook_marketplace/` directory. Config: `pytest.ini`.
-
-## Scripts
-
-All scripts in `scripts/` directory:
-
-- `run.sh` - Start development server
-- `gen_suser.sh` - Create superuser (Windows Git Bash)
-- `gen_fake_data.sh N` - Generate N users, textbooks, messages
-- `clean_and_gen.sh N` - Clean database and generate N test records
-- `rm_db_data.sh` - Remove all data from database (requires .env with DB credentials)
-- `run_tests.sh` - Run pytest tests
 
 ## Additional Information
 
@@ -218,13 +202,10 @@ Media files: stored in `textbook_marketplace/media/`.
 
 Static files: collected to `staticfiles/`.
 
-Database cleanup: `bash scripts/rm_db_data.sh` (requires .env with DB credentials).
-
 ## Files Reference
 
 - [docker-compose.yml](docker-compose.yml) - Database and Redis configuration
 - [pyproject.toml](pyproject.toml) - Dependencies and Python version
-- [scripts/](scripts/) - Helper scripts for common tasks
 - [textbook_marketplace/textbook_marketplace/settings.py](textbook_marketplace/textbook_marketplace/settings.py) - Production settings
 - [textbook_marketplace/textbook_marketplace/settings_dev.py](textbook_marketplace/textbook_marketplace/settings_dev.py) - Development settings
 - [env.example](env.example) - Environment variables template

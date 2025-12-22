@@ -7,6 +7,7 @@ from rest_framework_simplejwt.views import (
 )
 
 from .views import (
+    HealthCheckView,
     TextbookDetailView,
     TextbookImageView,
     ProtectedView,
@@ -23,6 +24,7 @@ router = DefaultRouter()
 router.register(r'textbooks', TextbookViewSet, basename='textbook')
 
 urlpatterns = [
+    path('health/', HealthCheckView.as_view(), name='health'),
     path('', include(router.urls)),
     path('textbook/<int:pk>/', TextbookDetailView.as_view(), name='textbook-detail'),
     path('textbook/<int:pk>/image/', TextbookImageView.as_view()),
