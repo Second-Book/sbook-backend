@@ -30,6 +30,14 @@ jobs:
       - name: Collect static files
         run: |
           cd textbook_marketplace
+          if [ -z "$DJANGO_SECRET_KEY" ]; then
+            echo "ERROR: DJANGO_SECRET_KEY is not set"
+            exit 1
+          fi
+          if [ -z "$DB_PASSWORD" ]; then
+            echo "ERROR: DB_PASSWORD is not set"
+            exit 1
+          fi
           uv run python manage.py collectstatic --noinput
         env:
           DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
