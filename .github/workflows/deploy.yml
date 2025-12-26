@@ -34,6 +34,11 @@ jobs:
         env:
           DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
           DEBUG: "False"
+          DB_NAME: ${{ vars.DB_NAME || 'sbook' }}
+          DB_USER: ${{ vars.DB_USER || 'sbook' }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_HOST: ${{ vars.DB_HOST || 'localhost' }}
+          DB_PORT: ${{ vars.DB_PORT || '5432' }}
 
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.0
