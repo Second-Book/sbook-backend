@@ -64,6 +64,14 @@ env DJANGO_SECRET_KEY="${DJANGO_SECRET_KEY}" \
   
   cd ${BACKEND_PATH}
   
+  # Activate uv if not in PATH
+  if ! command -v uv &> /dev/null; then
+    export PATH="$HOME/.local/bin:$PATH"
+    if [ -f "$HOME/.local/bin/env" ]; then
+      source "$HOME/.local/bin/env"
+    fi
+  fi
+  
   echo "Installing dependencies..."
   uv sync
   
