@@ -77,16 +77,36 @@ env DJANGO_SECRET_KEY="${DJANGO_SECRET_KEY}" \
   
   echo "Running migrations..."
   cd textbook_marketplace
-  uv run python manage.py migrate
+  env DJANGO_SECRET_KEY="${DJANGO_SECRET_KEY}" \
+      DEBUG="${DEBUG}" \
+      DB_NAME="${DB_NAME}" \
+      DB_USER="${DB_USER}" \
+      DB_PASSWORD="${DB_PASSWORD}" \
+      DB_HOST="${DB_HOST}" \
+      DB_PORT="${DB_PORT}" \
+      REDIS_HOST="${REDIS_HOST}" \
+      REDIS_PORT="${REDIS_PORT}" \
+      FRONTEND_URL="${FRONTEND_URL}" \
+    uv run python manage.py migrate
   
   echo "Collecting static files..."
-  uv run python manage.py collectstatic --noinput
+  env DJANGO_SECRET_KEY="${DJANGO_SECRET_KEY}" \
+      DEBUG="${DEBUG}" \
+      DB_NAME="${DB_NAME}" \
+      DB_USER="${DB_USER}" \
+      DB_PASSWORD="${DB_PASSWORD}" \
+      DB_HOST="${DB_HOST}" \
+      DB_PORT="${DB_PORT}" \
+      REDIS_HOST="${REDIS_HOST}" \
+      REDIS_PORT="${REDIS_PORT}" \
+      FRONTEND_URL="${FRONTEND_URL}" \
+    uv run python manage.py collectstatic --noinput
   
   echo "Updating supervisor configuration..."
   if [ -f deploy/sbook-backend.supervisor.conf ]; then
     cp deploy/sbook-backend.supervisor.conf ${DEPLOY_PATH}/conf/sbook-backend.supervisor.conf
     # Add environment variables to supervisor config
-    cat >> ${DEPLOY_PATH}/conf/sbook-backend.supervisor.conf << 'SUPERVISOR_ENV'
+    cat >> ${DEPLOY_PATH}/conf/sbook-backend.supervisor.conf << SUPERVISOR_ENV
 environment=DJANGO_SECRET_KEY="${DJANGO_SECRET_KEY}",DEBUG="${DEBUG}",DB_NAME="${DB_NAME}",DB_USER="${DB_USER}",DB_PASSWORD="${DB_PASSWORD}",DB_HOST="${DB_HOST}",DB_PORT="${DB_PORT}",REDIS_HOST="${REDIS_HOST}",REDIS_PORT="${REDIS_PORT}",FRONTEND_URL="${FRONTEND_URL}"
 SUPERVISOR_ENV
     sudo ln -sf ${DEPLOY_PATH}/conf/sbook-backend.supervisor.conf /etc/supervisor/conf.d/sbook-backend.conf
