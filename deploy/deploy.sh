@@ -111,10 +111,12 @@ ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} bash << ENDSSH
   if [ -f ../.env ]; then
     ln -sf ../.env .env
   fi
-  uv run python manage.py migrate
   
+  # Create static directory if needed (STATICFILES_DIRS expects this directory)
   echo "Creating static directory if needed..."
-  mkdir -p textbook_marketplace/static
+  mkdir -p static
+  
+  uv run python manage.py migrate
   
   echo "Collecting static files..."
   uv run python manage.py collectstatic --noinput
@@ -123,9 +125,17 @@ ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} bash << ENDSSH
   uv run python manage.py ensure_superuser
   
   echo "Updating supervisor configuration..."
+  # Ensure conf directory exists (we're still in textbook_marketplace, need to go back to backend dir)
+  cd ..
+  mkdir -p \${DEPLOY_PATH}/conf
+  
+  # Copy and link supervisor config (we're now in BACKEND_PATH, so deploy/ is relative)
   if [ -f deploy/sbook-backend.supervisor.conf ]; then
     cp deploy/sbook-backend.supervisor.conf \${DEPLOY_PATH}/conf/sbook-backend.supervisor.conf
     sudo ln -sf \${DEPLOY_PATH}/conf/sbook-backend.supervisor.conf /etc/supervisor/conf.d/sbook-backend.conf
+    echo "Supervisor configuration updated"
+  else
+    echo "WARNING: deploy/sbook-backend.supervisor.conf not found"
   fi
   
   echo "Restarting supervisor..."
