@@ -39,15 +39,68 @@ ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} bash << ENDSSH
   BACKEND_PATH="\${DEPLOY_PATH}/backend"
   BACKEND_PORT="${BACKEND_PORT:-8000}"
   
-  cd \${BACKEND_PATH}
+  echo "Checking system dependencies..."
   
-  # Activate uv if not in PATH
-  if ! command -v uv &> /dev/null; then
-    export PATH="\$HOME/.local/bin:\$PATH"
-    if [ -f "\$HOME/.local/bin/env" ]; then
-      source "\$HOME/.local/bin/env"
-    fi
+  # Check required commands and tools
+  MISSING_DEPS=""
+  
+  # Check python3
+  if ! command -v python3 &> /dev/null; then
+    MISSING_DEPS="\${MISSING_DEPS}python3 "
   fi
+  
+  # Check curl (needed for health checks)
+  if ! command -v curl &> /dev/null; then
+    MISSING_DEPS="\${MISSING_DEPS}curl "
+  fi
+  
+  # Check sudo (needed for supervisor commands)
+  if ! command -v sudo &> /dev/null; then
+    MISSING_DEPS="\${MISSING_DEPS}sudo "
+  fi
+  
+  # Activate uv and check availability
+  export UV_HOME="\$HOME/.local/bin"
+  if [ -d "\$UV_HOME" ]; then
+    export PATH="\$UV_HOME:\$PATH"
+  fi
+  
+  if ! command -v uv &> /dev/null; then
+    MISSING_DEPS="\${MISSING_DEPS}uv "
+  fi
+  
+  # Check libmagic1 (required for django-versatileimagefield)
+  # Note: This check may not be 100% reliable, but we try to warn early
+  # The actual error will be caught during migration if libmagic is missing
+  if ! python3 -c "import ctypes.util; lib = ctypes.util.find_library('magic'); exit(0 if lib else 1)" 2>/dev/null; then
+    echo "WARNING: libmagic1 may not be installed (required for django-versatileimagefield)"
+    echo "  If migrations fail with 'failed to find libmagic', install with:"
+    echo "  sudo apt-get update && sudo apt-get install -y libmagic1"
+  fi
+  
+  # Fail fast if dependencies are missing
+  if [ -n "\${MISSING_DEPS}" ]; then
+    echo "ERROR: Missing required system dependencies: \${MISSING_DEPS}"
+    echo ""
+    echo "Install missing dependencies:"
+    if echo "\${MISSING_DEPS}" | grep -q "uv "; then
+      echo "  uv: curl -LsSf https://astral.sh/uv/install.sh | sh"
+    fi
+    if echo "\${MISSING_DEPS}" | grep -q "python3 "; then
+      echo "  python3: sudo apt-get install -y python3"
+    fi
+    if echo "\${MISSING_DEPS}" | grep -q "curl "; then
+      echo "  curl: sudo apt-get install -y curl"
+    fi
+    if echo "\${MISSING_DEPS}" | grep -q "sudo "; then
+      echo "  sudo: sudo apt-get install -y sudo (usually pre-installed)"
+    fi
+    exit 1
+  fi
+  
+  echo "All system dependencies are available"
+  
+  cd \${BACKEND_PATH}
   
   echo "Installing dependencies..."
   uv sync
