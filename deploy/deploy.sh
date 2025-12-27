@@ -113,6 +113,9 @@ ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} bash << ENDSSH
   fi
   uv run python manage.py migrate
   
+  echo "Creating static directory if needed..."
+  mkdir -p textbook_marketplace/static
+  
   echo "Collecting static files..."
   uv run python manage.py collectstatic --noinput
   
