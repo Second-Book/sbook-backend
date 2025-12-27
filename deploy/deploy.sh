@@ -129,11 +129,18 @@ ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} bash << ENDSSH
   cd ..
   mkdir -p \${DEPLOY_PATH}/conf
   
-  # Copy and link supervisor config (we're now in BACKEND_PATH, so deploy/ is relative)
+  # Copy and update supervisor config with environment variables (we're now in BACKEND_PATH, so deploy/ is relative)
   if [ -f deploy/sbook-backend.supervisor.conf ]; then
-    cp deploy/sbook-backend.supervisor.conf \${DEPLOY_PATH}/conf/sbook-backend.supervisor.conf
+    # Use BACKEND_PORT from environment or default to 8000
+    BACKEND_PORT_VAL="\${BACKEND_PORT:-8000}"
+    BACKEND_HOST_VAL="\${BACKEND_HOST:-127.0.0.1}"
+    
+    # Create supervisor config with dynamic port and host
+    sed "s|BACKEND_HOST=\"127.0.0.1\"|BACKEND_HOST=\"\${BACKEND_HOST_VAL}\"|g; s|BACKEND_PORT=\"8000\"|BACKEND_PORT=\"\${BACKEND_PORT_VAL}\"|g" \
+      deploy/sbook-backend.supervisor.conf > \${DEPLOY_PATH}/conf/sbook-backend.supervisor.conf
+    
     sudo ln -sf \${DEPLOY_PATH}/conf/sbook-backend.supervisor.conf /etc/supervisor/conf.d/sbook-backend.conf
-    echo "Supervisor configuration updated"
+    echo "Supervisor configuration updated (BACKEND_HOST=\${BACKEND_HOST_VAL}, BACKEND_PORT=\${BACKEND_PORT_VAL})"
   else
     echo "WARNING: deploy/sbook-backend.supervisor.conf not found"
   fi
