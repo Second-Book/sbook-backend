@@ -267,7 +267,7 @@ def test_protected_view_success(user1: User, client: APIClient):
 
 
 @pytest.mark.django_db(reset_sequences=True, transaction=True)
-def test_protected_view_success(client: APIClient):
+def test_protected_view_failure(client: APIClient):
     response = client.get(reverse('protected'))
     assert response.status_code == 401
 
