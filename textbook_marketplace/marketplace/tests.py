@@ -178,14 +178,13 @@ def test_textbook_create_success(seller: User,
     token: AccessToken = AccessToken.for_user(user=seller)
     client.force_authenticate(user=seller, token=token)
     response: Response = client.post(
-        reverse('textbook-create'),
+        reverse('textbook-list'),
         data={'title': 'Science 301',
               'author': 'Alice Johnson',
               'school_class': '12th Grade',
               'publisher': 'Science Publishers',
               'subject': 'Science',
               'price': 49.99,
-              'seller': seller.username,
               'description': 'An advanced science textbook.',
               'whatsapp_contact': '1122334455',
               'viber_contact': '1122334455',
@@ -476,7 +475,7 @@ def factory() -> APIRequestFactory:
 @pytest.mark.django_db
 def test_auth_or_read_only_permission_success(user1: User,
                                               factory: APIRequestFactory):
-    request = factory.post(reverse('textbook-create'))
+    request = factory.post(reverse('textbook-list'))
     request.user = user1
     permission = IsAuthenticatedOrReadOnly()
     assert permission.has_permission(
@@ -486,7 +485,7 @@ def test_auth_or_read_only_permission_success(user1: User,
 
 @pytest.mark.django_db
 def test_auth_or_read_only_permission_anon_user(factory: APIRequestFactory):
-    request = factory.post(reverse('textbook-create'))
+    request = factory.post(reverse('textbook-list'))
     request.user = AnonymousUser()
     permission = IsAuthenticatedOrReadOnly()
     assert permission.has_permission(
