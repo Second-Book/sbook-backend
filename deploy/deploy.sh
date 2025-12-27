@@ -33,29 +33,11 @@ rsync -avz --delete \
   ./ ${SSH_USER}@${SSH_HOST}:${BACKEND_PATH}/
 
 # Deploy on server
-# Pass environment variables to remote server via env command
-env DJANGO_SECRET_KEY="${DJANGO_SECRET_KEY}" \
-    DEBUG="${DEBUG:-False}" \
-    DB_NAME="${DB_NAME:-sbook}" \
-    DB_USER="${DB_USER:-sbook}" \
-    DB_PASSWORD="${DB_PASSWORD}" \
-    DB_HOST="${DB_HOST:-localhost}" \
-    DB_PORT="${DB_PORT:-5432}" \
-    REDIS_HOST="${REDIS_HOST:-localhost}" \
-    REDIS_PORT="${REDIS_PORT:-6379}" \
-    FRONTEND_URL="${FRONTEND_URL:-https://sb.maria.rezvov.com}" \
-    DEPLOY_PATH="${DEPLOY_PATH:-/opt/sbook}" \
-    BACKEND_PORT="${BACKEND_PORT:-8000}" \
-  ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} bash << ENDSSH
+ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} bash << ENDSSH
   set -e
-  DEPLOY_PATH="\${DEPLOY_PATH:-/opt/sbook}"
+  DEPLOY_PATH="${DEPLOY_PATH:-/opt/sbook}"
   BACKEND_PATH="\${DEPLOY_PATH}/backend"
-  
-  # Debug: check if variables are set
-  if [ -z "\${DJANGO_SECRET_KEY}" ]; then
-    echo "ERROR: DJANGO_SECRET_KEY is not set"
-    exit 1
-  fi
+  BACKEND_PORT="${BACKEND_PORT:-8000}"
   
   cd \${BACKEND_PATH}
   
@@ -72,19 +54,21 @@ env DJANGO_SECRET_KEY="${DJANGO_SECRET_KEY}" \
   
   echo "Running migrations..."
   cd textbook_marketplace
-  # Variables are already available from env command
+  # Create symlink to .env for python-decouple to read it (it looks for .env in current directory)
+  if [ -f ../.env ]; then
+    ln -sf ../.env .env
+  fi
   uv run python manage.py migrate
   
   echo "Collecting static files..."
   uv run python manage.py collectstatic --noinput
   
+  echo "Ensuring superuser exists..."
+  uv run python manage.py ensure_superuser
+  
   echo "Updating supervisor configuration..."
   if [ -f deploy/sbook-backend.supervisor.conf ]; then
     cp deploy/sbook-backend.supervisor.conf \${DEPLOY_PATH}/conf/sbook-backend.supervisor.conf
-    # Add environment variables to supervisor config
-    cat >> \${DEPLOY_PATH}/conf/sbook-backend.supervisor.conf << SUPERVISOR_ENV
-environment=DJANGO_SECRET_KEY="\${DJANGO_SECRET_KEY}",DEBUG="\${DEBUG}",DB_NAME="\${DB_NAME}",DB_USER="\${DB_USER}",DB_PASSWORD="\${DB_PASSWORD}",DB_HOST="\${DB_HOST}",DB_PORT="\${DB_PORT}",REDIS_HOST="\${REDIS_HOST}",REDIS_PORT="\${REDIS_PORT}",FRONTEND_URL="\${FRONTEND_URL}"
-SUPERVISOR_ENV
     sudo ln -sf \${DEPLOY_PATH}/conf/sbook-backend.supervisor.conf /etc/supervisor/conf.d/sbook-backend.conf
   fi
   

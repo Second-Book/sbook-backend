@@ -10,6 +10,31 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_sbook
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -26,6 +51,22 @@ jobs:
 
       - name: Install dependencies
         run: uv sync
+
+      - name: Run tests
+        run: |
+          cd textbook_marketplace
+          uv run pytest
+        env:
+          DJANGO_SECRET_KEY: test-secret-key-for-ci
+          DEBUG: "True"
+          DB_NAME: test_sbook
+          DB_USER: test_user
+          DB_PASSWORD: test_password
+          DB_HOST: localhost
+          DB_PORT: "5432"
+          REDIS_HOST: localhost
+          REDIS_PORT: "6379"
+          FRONTEND_URL: http://localhost:3000
 
       - name: Collect static files
         run: |
@@ -56,6 +97,31 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
+      - name: Create .env file
+        run: |
+          cat > backend.env << EOF
+          DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
+          DEBUG=False
+          DB_NAME=${{ vars.DB_NAME || 'sbook' }}
+          DB_USER=${{ vars.DB_USER || 'sbook' }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          DB_HOST=${{ vars.DB_HOST || 'localhost' }}
+          DB_PORT=${{ vars.DB_PORT || '5432' }}
+          REDIS_HOST=${{ vars.REDIS_HOST || 'localhost' }}
+          REDIS_PORT=${{ vars.REDIS_PORT || '6379' }}
+          FRONTEND_URL=${{ vars.FRONTEND_URL || 'https://sb.maria.rezvov.com' }}
+          DJANGO_SUPERUSER_EMAIL=${{ vars.DJANGO_SUPERUSER_EMAIL }}
+          DJANGO_SUPERUSER_PASSWORD=${{ secrets.DJANGO_SUPERUSER_PASSWORD }}
+          EOF
+
+      - name: Deploy .env to server
+        run: |
+          scp -o StrictHostKeyChecking=no backend.env ${SSH_USER}@${SSH_HOST}:/opt/sbook/backend/.env
+          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} "chmod 600 /opt/sbook/backend/.env"
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+
       - name: Deploy to server
         run: |
           chmod +x deploy/deploy.sh
@@ -65,14 +131,4 @@ jobs:
           SSH_USER: ${{ secrets.SSH_USER }}
           DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/sbook' }}
           BACKEND_PORT: ${{ vars.BACKEND_PORT || '8000' }}
-          DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
-          DEBUG: "False"
-          DB_NAME: ${{ vars.DB_NAME || 'sbook' }}
-          DB_USER: ${{ vars.DB_USER || 'sbook' }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          DB_HOST: ${{ vars.DB_HOST || 'localhost' }}
-          DB_PORT: ${{ vars.DB_PORT || '5432' }}
-          REDIS_HOST: ${{ vars.REDIS_HOST || 'localhost' }}
-          REDIS_PORT: ${{ vars.REDIS_PORT || '6379' }}
-          FRONTEND_URL: ${{ vars.FRONTEND_URL || 'https://sb.maria.rezvov.com' }}
 
