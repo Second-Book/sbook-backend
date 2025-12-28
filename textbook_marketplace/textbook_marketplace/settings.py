@@ -30,7 +30,9 @@ SECRET_KEY = config('DJANGO_SECRET_KEY')
 # Production settings
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = ['127.0.0.1', '[::1]', 'localhost', '192.168.0.44:8080', '127.0.0.1:8000', '82.146.48.165', 'sb.maria.rezvov.com', 'api.sb.maria.rezvov.com']
+# ALLOWED_HOSTS can be set as comma-separated string in .env
+ALLOWED_HOSTS_STR = config('ALLOWED_HOSTS', default='127.0.0.1,localhost')
+ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS_STR.split(',')]
 # Application definition
 
 INSTALLED_APPS = [
@@ -152,9 +154,6 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = config("MEDIA_ROOT", default=os.path.join(BASE_DIR, "media"))
 MEDIA_HOST = config("MEDIA_HOST", default="http://127.0.0.1:8000")
 
-
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
@@ -197,7 +196,7 @@ CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
             "CONFIG": {
-                "hosts": [(config("REDIS_HOST"), config("REDIS_PORT"))],
+                "hosts": [(config("REDIS_HOST"), config("REDIS_PORT", cast=int))],
             },
         },
     }

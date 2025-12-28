@@ -183,14 +183,42 @@ Note: MUST use `access` token (not `refresh` token) for authenticated requests.
 
 ## Testing
 
-Run tests:
+Run all tests:
 
 ```bash
 cd textbook_marketplace
-uv run pytest
+uv run python -m pytest -v
+```
+
+Run tests with verbose output:
+
+```bash
+uv run python -m pytest -v
+```
+
+Run tests for specific app:
+
+```bash
+# Run marketplace tests only
+uv run python -m pytest marketplace/tests.py -v
+
+# Run chat tests only
+uv run python -m pytest chat/tests.py -v
+```
+
+Run specific test:
+
+```bash
+uv run python -m pytest marketplace/tests.py::test_textbooks_retrieve_success -v
 ```
 
 Test location: `textbook_marketplace/` directory. Config: `pytest.ini`.
+
+Test coverage (if pytest-cov installed):
+
+```bash
+uv run python -m pytest --cov=. --cov-report=html
+```
 
 ## Additional Information
 

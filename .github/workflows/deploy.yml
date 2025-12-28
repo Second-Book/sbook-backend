@@ -1,0 +1,144 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    env:
+      # Database configuration (production)
+      DB_NAME: ${{ vars.DB_NAME || 'sbook' }}
+      DB_USER: ${{ vars.DB_USER || 'sbook' }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      DB_HOST: ${{ vars.DB_HOST || 'localhost' }}
+      DB_PORT: ${{ vars.DB_PORT || '5432' }}
+      # Redis configuration
+      REDIS_HOST: ${{ vars.REDIS_HOST || 'localhost' }}
+      REDIS_PORT: ${{ vars.REDIS_PORT || '6379' }}
+      # Django configuration
+      DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+      FRONTEND_URL: ${{ vars.FRONTEND_URL || 'https://sb.maria.rezvov.com' }}
+      # Deployment configuration
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/sbook' }}
+      BACKEND_HOST: ${{ vars.BACKEND_HOST || '127.0.0.1' }}
+      BACKEND_PORT: ${{ vars.BACKEND_PORT || '8000' }}
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_USER: ${{ secrets.SSH_USER }}
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_sbook
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run tests
+        run: |
+          cd textbook_marketplace
+          uv run pytest
+        env:
+          DJANGO_SECRET_KEY: test-secret-key-for-ci
+          DEBUG: "True"
+          DB_NAME: test_sbook
+          DB_USER: test_user
+          DB_PASSWORD: test_password
+          DB_HOST: localhost
+          DB_PORT: "5432"
+          REDIS_HOST: localhost
+          REDIS_PORT: "6379"
+          FRONTEND_URL: http://localhost:3000
+
+      - name: Collect static files
+        run: |
+          cd textbook_marketplace
+          if [ -z "$DJANGO_SECRET_KEY" ]; then
+            echo "ERROR: DJANGO_SECRET_KEY is not set"
+            exit 1
+          fi
+          if [ -z "$DB_PASSWORD" ]; then
+            echo "ERROR: DB_PASSWORD is not set"
+            exit 1
+          fi
+          uv run python manage.py collectstatic --noinput
+        env:
+          DEBUG: "False"
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add server to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${SSH_HOST} >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Create .env file
+        run: |
+          cat > backend.env << EOF
+          DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+          DEBUG=False
+          ALLOWED_HOSTS=127.0.0.1,localhost,${{ vars.BACKEND_DOMAIN || 'api.sb.maria.rezvov.com' }}
+          DB_NAME=${DB_NAME}
+          DB_USER=${DB_USER}
+          DB_PASSWORD=${DB_PASSWORD}
+          DB_HOST=${DB_HOST}
+          DB_PORT=${DB_PORT}
+          REDIS_HOST=${REDIS_HOST}
+          REDIS_PORT=${REDIS_PORT}
+          FRONTEND_URL=${FRONTEND_URL}
+          DJANGO_SUPERUSER_EMAIL=${{ vars.DJANGO_SUPERUSER_EMAIL }}
+          DJANGO_SUPERUSER_PASSWORD=${{ secrets.DJANGO_SUPERUSER_PASSWORD }}
+          EOF
+
+      - name: Deploy .env to server
+        run: |
+          scp backend.env ${SSH_USER}@${SSH_HOST}:${DEPLOY_PATH}/backend/.env
+          ssh ${SSH_USER}@${SSH_HOST} "chmod 600 ${DEPLOY_PATH}/backend/.env"
+
+      - name: Deploy to server
+        run: |
+          chmod +x deploy/deploy.sh
+          ./deploy/deploy.sh
+

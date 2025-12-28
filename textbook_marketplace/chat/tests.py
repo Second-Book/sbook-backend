@@ -1,3 +1,4 @@
+import asyncio
 import time
 
 import pytest
@@ -224,7 +225,10 @@ async def test_websocket_with_token_get_unseen_messages_success(
         await communicator_2.receive_json_from()
 
     await communicator_1.disconnect()
-    await communicator_2.disconnect()
+    try:
+        await communicator_2.disconnect()
+    except asyncio.CancelledError:
+        pass  # Expected after timeout cancels the task
 
 
 @pytest.mark.django_db(reset_sequences=True)

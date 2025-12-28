@@ -45,8 +45,18 @@ class TextbookSerializer(serializers.ModelSerializer):
         return value
         
     def create(self, validated_data):
-        request = self.context.get('request')
-        seller = request.user
+        # seller is passed via serializer.save(seller=...) in perform_create
+        # In DRF, kwargs passed to save() are available in validated_data
+        # But seller might already be in validated_data, so we need to handle it properly
+        # The perform_create method passes seller via save(), which should set it correctly
+        # If seller is in validated_data, use it; otherwise it should come from context
+        seller = validated_data.pop('seller', None)
+        if seller is None:
+            request = self.context.get('request')
+            if request and hasattr(request, 'user'):
+                seller = request.user
+        if seller is None:
+            raise ValueError("seller is required")
         textbook = Textbook.objects.create(seller=seller, **validated_data)
         return textbook
 
