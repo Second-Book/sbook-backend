@@ -119,6 +119,7 @@ jobs:
           cat > backend.env << EOF
           DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
           DEBUG=False
+          ALLOWED_HOSTS=127.0.0.1,localhost,${{ vars.BACKEND_DOMAIN || 'api.sb.maria.rezvov.com' }}
           DB_NAME=${DB_NAME}
           DB_USER=${DB_USER}
           DB_PASSWORD=${DB_PASSWORD}
