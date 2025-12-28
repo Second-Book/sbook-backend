@@ -1,0 +1,12 @@
+[program:sbook-backend]
+command=${UV_PATH} run daphne -b ${BACKEND_HOST} -p ${BACKEND_PORT} textbook_marketplace.asgi:application
+directory=${DEPLOY_PATH}/backend/textbook_marketplace
+autostart=true
+autorestart=true
+stopasgroup=true
+killasgroup=true
+stderr_logfile=${DEPLOY_PATH}/backend/logs/error.log
+stdout_logfile=${DEPLOY_PATH}/backend/logs/access.log
+stopwaitsecs=10
+environment=DJANGO_SETTINGS_MODULE="textbook_marketplace.settings",BACKEND_HOST="${BACKEND_HOST}",BACKEND_PORT="${BACKEND_PORT}"
+
