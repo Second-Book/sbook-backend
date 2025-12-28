@@ -10,7 +10,7 @@ BACKEND_PATH="${DEPLOY_PATH}/backend"
 echo "Deploying backend to ${SSH_USER}@${SSH_HOST}:${BACKEND_PATH}"
 
 # Create directory structure on server
-ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} << ENDSSH
+ssh ${SSH_USER}@${SSH_HOST} << ENDSSH
   set -e
   DEPLOY_PATH="${DEPLOY_PATH:-/opt/sbook}"
   BACKEND_PATH="\${DEPLOY_PATH}/backend"
@@ -33,7 +33,7 @@ rsync -avz --delete \
   ./ ${SSH_USER}@${SSH_HOST}:${BACKEND_PATH}/
 
 # Deploy on server
-ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} bash << ENDSSH
+ssh ${SSH_USER}@${SSH_HOST} bash << ENDSSH
   set -e
   DEPLOY_PATH="${DEPLOY_PATH:-/opt/sbook}"
   BACKEND_PATH="\${DEPLOY_PATH}/backend"
@@ -125,24 +125,40 @@ ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} bash << ENDSSH
   uv run python manage.py ensure_superuser
   
   echo "Updating supervisor configuration..."
-  # Ensure conf directory exists (we're still in textbook_marketplace, need to go back to backend dir)
+  # Go back to backend dir (we're still in textbook_marketplace)
   cd ..
-  mkdir -p \${DEPLOY_PATH}/conf
   
   # Copy and update supervisor config with environment variables (we're now in BACKEND_PATH, so deploy/ is relative)
-  if [ -f deploy/sbook-backend.supervisor.conf ]; then
-    # Use BACKEND_PORT from environment or default to 8000
+  # Use template file if available, otherwise fall back to regular config
+  if [ -f deploy/sbook-backend.supervisor.conf.template ]; then
+    # Use environment variables with defaults
+    BACKEND_PORT_VAL="\${BACKEND_PORT:-8000}"
+    BACKEND_HOST_VAL="\${BACKEND_HOST:-127.0.0.1}"
+    UV_PATH_VAL="\${UV_PATH:-/home/sbook/.local/bin/uv}"
+    
+    # Generate supervisor config from template using envsubst
+    DEPLOY_PATH="\${DEPLOY_PATH}" \
+    BACKEND_HOST="\${BACKEND_HOST_VAL}" \
+    BACKEND_PORT="\${BACKEND_PORT_VAL}" \
+    UV_PATH="\${UV_PATH_VAL}" \
+    envsubst '\$DEPLOY_PATH \$BACKEND_HOST \$BACKEND_PORT \$UV_PATH' \
+      < deploy/sbook-backend.supervisor.conf.template \
+      > \${DEPLOY_PATH}/conf/sbook-backend.supervisor.conf
+    
+    sudo ln -sf \${DEPLOY_PATH}/conf/sbook-backend.supervisor.conf /etc/supervisor/conf.d/sbook-backend.conf
+    echo "Supervisor configuration updated from template (BACKEND_HOST=\${BACKEND_HOST_VAL}, BACKEND_PORT=\${BACKEND_PORT_VAL}, UV_PATH=\${UV_PATH_VAL})"
+  elif [ -f deploy/sbook-backend.supervisor.conf ]; then
+    # Fallback: use sed for backward compatibility
     BACKEND_PORT_VAL="\${BACKEND_PORT:-8000}"
     BACKEND_HOST_VAL="\${BACKEND_HOST:-127.0.0.1}"
     
-    # Create supervisor config with dynamic port and host
     sed "s|BACKEND_HOST=\"127.0.0.1\"|BACKEND_HOST=\"\${BACKEND_HOST_VAL}\"|g; s|BACKEND_PORT=\"8000\"|BACKEND_PORT=\"\${BACKEND_PORT_VAL}\"|g" \
       deploy/sbook-backend.supervisor.conf > \${DEPLOY_PATH}/conf/sbook-backend.supervisor.conf
     
     sudo ln -sf \${DEPLOY_PATH}/conf/sbook-backend.supervisor.conf /etc/supervisor/conf.d/sbook-backend.conf
     echo "Supervisor configuration updated (BACKEND_HOST=\${BACKEND_HOST_VAL}, BACKEND_PORT=\${BACKEND_PORT_VAL})"
   else
-    echo "WARNING: deploy/sbook-backend.supervisor.conf not found"
+    echo "WARNING: deploy/sbook-backend.supervisor.conf.template or deploy/sbook-backend.supervisor.conf not found"
   fi
   
   echo "Restarting supervisor..."

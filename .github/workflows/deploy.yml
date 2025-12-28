@@ -10,6 +10,26 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     
+    env:
+      # Database configuration (production)
+      DB_NAME: ${{ vars.DB_NAME || 'sbook' }}
+      DB_USER: ${{ vars.DB_USER || 'sbook' }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      DB_HOST: ${{ vars.DB_HOST || 'localhost' }}
+      DB_PORT: ${{ vars.DB_PORT || '5432' }}
+      # Redis configuration
+      REDIS_HOST: ${{ vars.REDIS_HOST || 'localhost' }}
+      REDIS_PORT: ${{ vars.REDIS_PORT || '6379' }}
+      # Django configuration
+      DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+      FRONTEND_URL: ${{ vars.FRONTEND_URL || 'https://sb.maria.rezvov.com' }}
+      # Deployment configuration
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/sbook' }}
+      BACKEND_HOST: ${{ vars.BACKEND_HOST || '127.0.0.1' }}
+      BACKEND_PORT: ${{ vars.BACKEND_PORT || '8000' }}
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_USER: ${{ secrets.SSH_USER }}
+    
     services:
       postgres:
         image: postgres:15
@@ -81,54 +101,43 @@ jobs:
           fi
           uv run python manage.py collectstatic --noinput
         env:
-          DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
           DEBUG: "False"
-          DB_NAME: ${{ vars.DB_NAME || 'sbook' }}
-          DB_USER: ${{ vars.DB_USER || 'sbook' }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          DB_HOST: ${{ vars.DB_HOST || 'localhost' }}
-          DB_PORT: ${{ vars.DB_PORT || '5432' }}
-          REDIS_HOST: ${{ vars.REDIS_HOST || 'localhost' }}
-          REDIS_PORT: ${{ vars.REDIS_PORT || '6379' }}
-          FRONTEND_URL: ${{ vars.FRONTEND_URL || 'http://localhost:3000' }}
 
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
+      - name: Add server to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${SSH_HOST} >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
       - name: Create .env file
         run: |
           cat > backend.env << EOF
-          DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
+          DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
           DEBUG=False
-          DB_NAME=${{ vars.DB_NAME || 'sbook' }}
-          DB_USER=${{ vars.DB_USER || 'sbook' }}
-          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-          DB_HOST=${{ vars.DB_HOST || 'localhost' }}
-          DB_PORT=${{ vars.DB_PORT || '5432' }}
-          REDIS_HOST=${{ vars.REDIS_HOST || 'localhost' }}
-          REDIS_PORT=${{ vars.REDIS_PORT || '6379' }}
-          FRONTEND_URL=${{ vars.FRONTEND_URL || 'https://sb.maria.rezvov.com' }}
+          DB_NAME=${DB_NAME}
+          DB_USER=${DB_USER}
+          DB_PASSWORD=${DB_PASSWORD}
+          DB_HOST=${DB_HOST}
+          DB_PORT=${DB_PORT}
+          REDIS_HOST=${REDIS_HOST}
+          REDIS_PORT=${REDIS_PORT}
+          FRONTEND_URL=${FRONTEND_URL}
           DJANGO_SUPERUSER_EMAIL=${{ vars.DJANGO_SUPERUSER_EMAIL }}
           DJANGO_SUPERUSER_PASSWORD=${{ secrets.DJANGO_SUPERUSER_PASSWORD }}
           EOF
 
       - name: Deploy .env to server
         run: |
-          scp -o StrictHostKeyChecking=no backend.env ${SSH_USER}@${SSH_HOST}:/opt/sbook/backend/.env
-          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} "chmod 600 /opt/sbook/backend/.env"
-        env:
-          SSH_USER: ${{ secrets.SSH_USER }}
-          SSH_HOST: ${{ secrets.SSH_HOST }}
+          scp backend.env ${SSH_USER}@${SSH_HOST}:${DEPLOY_PATH}/backend/.env
+          ssh ${SSH_USER}@${SSH_HOST} "chmod 600 ${DEPLOY_PATH}/backend/.env"
 
       - name: Deploy to server
         run: |
           chmod +x deploy/deploy.sh
           ./deploy/deploy.sh
-        env:
-          SSH_HOST: ${{ secrets.SSH_HOST }}
-          SSH_USER: ${{ secrets.SSH_USER }}
-          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/sbook' }}
-          BACKEND_PORT: ${{ vars.BACKEND_PORT || '8000' }}
 
