@@ -102,6 +102,14 @@ ssh ${SSH_USER}@${SSH_HOST} bash << ENDSSH
   
   cd \${BACKEND_PATH}
   
+  # Check if .venv exists but is broken (linked to non-existent Python)
+  if [ -d ".venv" ]; then
+    if [ ! -x ".venv/bin/python3" ] || ! ".venv/bin/python3" --version &>/dev/null; then
+      echo "Detected broken .venv, removing..."
+      sudo rm -rf .venv
+    fi
+  fi
+  
   echo "Installing dependencies..."
   uv sync
   
