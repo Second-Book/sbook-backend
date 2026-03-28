@@ -4,7 +4,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 
 from django.contrib.auth import get_user_model
 
-from .models import Textbook, Order, Report
+from .models import Textbook, Order, Report, Wishlist
 from versatileimagefield.serializers import VersatileImageFieldSerializer
 from django.conf import settings
 from urllib.parse import urljoin
@@ -94,6 +94,15 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = '__all__'
+
+
+class WishlistSerializer(serializers.ModelSerializer):
+    textbook = TextbookSerializer(read_only=True)
+
+    class Meta:
+        model = Wishlist
+        fields = ['id', 'textbook', 'created_at']
+        read_only_fields = ['id', 'created_at']
 
 
 class ReportSerializer(serializers.ModelSerializer):

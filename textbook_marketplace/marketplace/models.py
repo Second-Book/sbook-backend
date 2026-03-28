@@ -75,6 +75,20 @@ class Block(models.Model):
         unique_together = ('initiator_user', 'blocked_user')
 
 
+class Wishlist(models.Model):
+    """Model for user's saved textbooks."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='wishlist')
+    textbook = models.ForeignKey(Textbook, on_delete=models.CASCADE, related_name='wishlisted_by')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'textbook')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.textbook.title}"
+
+
 class Report(models.Model):
     """ Model for report system. """
     user = models.ForeignKey(User,

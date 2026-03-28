@@ -50,7 +50,9 @@ pnpm test:e2e           # Playwright E2E tests
 pnpm test:e2e:ui        # Playwright with UI
 ```
 
-Environment: `NEXT_PUBLIC_API_BASE_URL` (default `http://127.0.0.1:8000/api`), `NEXT_PUBLIC_WS_URL` (default `ws://localhost:8000`).
+Environment: `NEXT_PUBLIC_API_BASE_URL` (default `http://127.0.0.1:8000`), `NEXT_PUBLIC_WS_URL` (default `ws://localhost:8000`).
+
+**Important**: `NEXT_PUBLIC_API_BASE_URL` must NOT include `/api` suffix — service paths already include it (e.g. `/api/textbooks/`).
 
 ## Backend Architecture
 
@@ -77,7 +79,7 @@ textbook_marketplace/           # Django project root (manage.py lives here)
 
 - `settings.py` — production (PostgreSQL, restricted CORS, password validators)
 - `settings_dev.py` — development (SQLite, `CORS_ALLOW_ALL_ORIGINS=True`, no password validators)
-- Environment variables via `python-decouple`: `DJANGO_SECRET_KEY`, `DB_*`, `REDIS_HOST`, `REDIS_PORT`, `FRONTEND_URL`
+- Environment variables via `python-decouple`: `DJANGO_SECRET_KEY`, `DB_*`, `REDIS_HOST`, `REDIS_PORT`, `FRONTEND_URL`, `MEDIA_HOST`
 
 ## Frontend Architecture
 
@@ -98,8 +100,87 @@ REST API at `/api/`:
 - `/api/signup/` — registration
 - `/api/users/me/` — current user
 - `/api/users/{username}/block/` — block/unblock
+- `/api/wishlist/` — GET list saved textbooks
+- `/api/wishlist/{textbook_id}/` — POST add / DELETE remove from wishlist
+- `/api/wishlist/{textbook_id}/check/` — GET check if textbook is in wishlist
 - `/api/chat/`, `/api/chat/conversation/{username}/` — messages
 - WebSocket: `ws/chat/?token=<jwt>`
+
+## Local Development Setup
+
+Step-by-step to get the full stack running locally:
+
+```bash
+# 1. Start PostgreSQL and Redis via Docker
+docker compose up -d                  # PostgreSQL :10543, Redis :16379
+
+# 2. Install backend dependencies
+cd /home/arezvov/d/projects/sbook/textbook-marketplace-backend
+uv sync
+
+# 3. Run migrations (uses production settings with PostgreSQL from Docker)
+uv run python textbook_marketplace/manage.py migrate
+
+# 4. Generate test data
+uv run python textbook_marketplace/manage.py generate_realistic_data --textbooks 50
+
+# 5. Start backend server
+uv run python textbook_marketplace/manage.py runserver 0.0.0.0:8000
+
+# 6. In another terminal — install and start frontend
+cd /home/arezvov/d/projects/sbook/textbook-marketplace-frontend
+pnpm install
+pnpm dev                              # http://localhost:3000
+```
+
+Backend `.env` (repo root): contains `DB_*`, `DJANGO_SECRET_KEY`, `REDIS_*` (already configured for Docker).
+
+Frontend `.env`: `NEXT_PUBLIC_API_BASE_URL="http://127.0.0.1:8000"` — **no `/api` suffix**.
+
+### Notes
+
+- Backend uses `settings.py` (PostgreSQL) by default via `manage.py`. Tests use `settings_dev.py` (SQLite) via `pytest.ini`.
+- `settings_dev.py` has broken SQLite config (missing `NAME`), so for local dev use the default `settings.py` with Docker PostgreSQL.
+- `MEDIA_HOST` defaults to `http://127.0.0.1:8000` — image URLs in API responses use this prefix. On production must be set to `https://api.sb.maria.rezvov.com`.
+- Frontend dev server uses Turbopack by default (`next dev`).
+
+## CI/CD Deployment
+
+Both repos deploy to production via **GitHub Actions** on push to `main` (or manual `workflow_dispatch`).
+
+### Backend Deployment (`.github/workflows/deploy.yml`)
+
+1. Runs tests with PostgreSQL/Redis service containers in CI
+2. Collects static files
+3. Generates `.env` from GitHub secrets/vars and deploys via SCP
+4. Runs `deploy/deploy.sh` which:
+   - Rsyncs code to `/opt/sbook/backend/` (excludes `.env`, `media`, `logs`)
+   - Runs `uv sync`, `migrate`, `collectstatic`
+   - Updates Supervisor config and restarts `sbook-backend`
+   - Health check on `/api/health/`
+
+### Frontend Deployment (`.github/workflows/deploy.yml` in frontend repo)
+
+1. Builds with `pnpm build` (bakes `NEXT_PUBLIC_*` env vars)
+2. Rsyncs to `/opt/sbook/frontend/` (excludes `.env`, `node_modules`, `.next/cache`)
+3. Runs `pnpm install`, restarts PM2 `sbook-frontend`
+4. Health check on `http://127.0.0.1:3000`
+
+### Deployment Process
+
+To deploy changes: merge/push to `main` branch → GitHub Actions triggers automatically.
+
+```bash
+# Deploy backend
+git checkout main && git merge dev && git push origin main
+
+# Deploy frontend (from frontend repo)
+cd /home/arezvov/d/projects/sbook/textbook-marketplace-frontend
+git checkout main && git merge dev && git push origin main
+```
+
+GitHub Secrets needed: `SSH_PRIVATE_KEY`, `SSH_HOST`, `SSH_USER`, `DJANGO_SECRET_KEY`, `DB_PASSWORD`, `DJANGO_SUPERUSER_PASSWORD`.
+GitHub Vars: `DB_NAME`, `DB_USER`, `DB_HOST`, `DB_PORT`, `REDIS_HOST`, `REDIS_PORT`, `FRONTEND_URL`, `MEDIA_HOST`, `BACKEND_DOMAIN`, `DEPLOY_PATH`.
 
 ## Production Server
 

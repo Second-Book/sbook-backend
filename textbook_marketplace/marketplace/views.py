@@ -16,13 +16,14 @@ from django.utils.decorators import method_decorator
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 
-from .models import Textbook, Order, Block
+from .models import Textbook, Order, Block, Wishlist
 from .serializers import (
     TextbookSerializer,
     SignupSerializer,
     UserSerializer,
     OrderSerializer,
     ReportSerializer,
+    WishlistSerializer,
 )
 from .filters import TextbookFilter
 
@@ -189,6 +190,41 @@ class BlockView(APIView):
         except Block.DoesNotExist:
             return Response({'error': f'User {username} is not blocked.'},
                             status=status.HTTP_404_NOT_FOUND)
+
+
+class WishlistView(APIView):
+    """View for managing user's wishlist (saved textbooks)."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """List all textbooks in user's wishlist."""
+        items = Wishlist.objects.filter(user=request.user).select_related('textbook', 'textbook__seller')
+        serializer = WishlistSerializer(items, many=True)
+        return Response(serializer.data)
+
+    def post(self, request, textbook_id):
+        """Add a textbook to wishlist."""
+        textbook = get_object_or_404(Textbook, pk=textbook_id)
+        _, created = Wishlist.objects.get_or_create(user=request.user, textbook=textbook)
+        if not created:
+            return Response({'detail': 'Already in wishlist.'}, status=status.HTTP_200_OK)
+        return Response({'detail': 'Added to wishlist.'}, status=status.HTTP_201_CREATED)
+
+    def delete(self, request, textbook_id):
+        """Remove a textbook from wishlist."""
+        deleted, _ = Wishlist.objects.filter(user=request.user, textbook_id=textbook_id).delete()
+        if not deleted:
+            return Response({'detail': 'Not in wishlist.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class WishlistCheckView(APIView):
+    """Check if a textbook is in the user's wishlist."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, textbook_id):
+        exists = Wishlist.objects.filter(user=request.user, textbook_id=textbook_id).exists()
+        return Response({'in_wishlist': exists})
 
 
 class ReportView(APIView):
