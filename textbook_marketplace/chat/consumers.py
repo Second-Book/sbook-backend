@@ -49,10 +49,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def save_message(self, text: str, recipient: User) -> None:
         """ Creates message in db. """
-        message: Message = Message.objects.create(text=text,
-                                                  sender=self.user,
-                                                  recipient=recipient)
-        message.save()
+        Message.objects.create(text=text,
+                               sender=self.user,
+                               recipient=recipient)
 
     @database_sync_to_async
     def is_blocked(self, recipient: User) -> bool:

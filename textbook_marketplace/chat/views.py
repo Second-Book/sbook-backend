@@ -21,7 +21,9 @@ class MessageView(APIView):
     def get(self, request):
         """ Returns list of messages request.user is member of. """
         user = request.user
-        messages = Message.objects.filter(Q(sender=user) | Q(recipient=user))
+        messages = Message.objects.filter(
+            Q(sender=user) | Q(recipient=user)
+        ).order_by('sent_at')
         serializer = MessageSerializer(messages, many=True)
         return Response(serializer.data)
 
@@ -46,11 +48,9 @@ class MessageMarkAsSeenView(APIView):
 
     def post(self, request):
         ids: List[int] = request.data['ids_to_mark']
-        messages = Message.objects.filter(id__in=ids)
+        messages = Message.objects.filter(id__in=ids, recipient=request.user)
         if not messages.exists():
             return Response(status=status.HTTP_304_NOT_MODIFIED)
-        for m in messages:
-            m.seen = True
-        Message.objects.bulk_update(messages, ['seen'])
+        messages.update(seen=True)
         return Response(status=status.HTTP_200_OK)
 
