@@ -18,6 +18,8 @@ from .views import (
     UserDetailView,
     BlockView,
     ReportView,
+    WishlistView,
+    WishlistCheckView,
 )
 
 router = DefaultRouter()
@@ -36,4 +38,7 @@ urlpatterns = [
     path('users/me/', UserDetailView.as_view(), name='user-detail'),
     path('users/<str:username>/block/', BlockView.as_view(), name='user-block'),
     path('report/', ReportView.as_view(), name='report'),
+    path('wishlist/', WishlistView.as_view(), name='wishlist-list'),
+    path('wishlist/<int:textbook_id>/', WishlistView.as_view(), name='wishlist-detail'),
+    path('wishlist/<int:textbook_id>/check/', WishlistCheckView.as_view(), name='wishlist-check'),
 ]

@@ -128,6 +128,7 @@ jobs:
           REDIS_HOST=${REDIS_HOST}
           REDIS_PORT=${REDIS_PORT}
           FRONTEND_URL=${FRONTEND_URL}
+          MEDIA_HOST=${{ vars.MEDIA_HOST || 'https://api.sb.maria.rezvov.com' }}
           DJANGO_SUPERUSER_EMAIL=${{ vars.DJANGO_SUPERUSER_EMAIL }}
           DJANGO_SUPERUSER_PASSWORD=${{ secrets.DJANGO_SUPERUSER_PASSWORD }}
           EOF
