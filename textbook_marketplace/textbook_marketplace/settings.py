@@ -212,8 +212,12 @@ SITE_ID = 1
 # Password validators are already defined above (lines 114-127)
 # AUTH_PASSWORD_VALIDATORS removed - using the one defined earlier
 
+from datetime import timedelta
+
 SIMPLE_JWT = {
     'USER_MODEL': 'marketplace.User',
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
 }
 
 AUTH_USER_MODEL = "marketplace.User"

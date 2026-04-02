@@ -204,8 +204,12 @@ SITE_ID = 1
 
 AUTH_PASSWORD_VALIDATORS = []
 
+from datetime import timedelta
+
 SIMPLE_JWT = {
     'USER_MODEL': 'marketplace.User',
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
 }
 
 AUTH_USER_MODEL = "marketplace.User"

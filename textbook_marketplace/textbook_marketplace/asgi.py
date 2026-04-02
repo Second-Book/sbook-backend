@@ -9,18 +9,15 @@ from django.core.asgi import get_asgi_application
 django_asgi_app = get_asgi_application()
 
 # Now safe to import Django-dependent modules
-from channels.security.websocket import AllowedHostsOriginValidator
 from channels.routing import ProtocolTypeRouter, URLRouter
 from chat.jwt_middleware import CustomJWTAuthMiddlewareStack
 from chat import routing
 
 application = ProtocolTypeRouter({
     "http": django_asgi_app,
-    "websocket": AllowedHostsOriginValidator(
-        CustomJWTAuthMiddlewareStack(
-            URLRouter(
-                routing.websocket_urlpatterns,
-            )
+    "websocket": CustomJWTAuthMiddlewareStack(
+        URLRouter(
+            routing.websocket_urlpatterns,
         )
     )
 })
