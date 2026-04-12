@@ -9,8 +9,8 @@ SecondBook — a textbook marketplace with Django backend and Next.js frontend. 
 ## Workspace
 
 This is a monorepo-style workspace with two repos:
-- **Backend** (this repo): `/home/arezvov/d/projects/sbook/textbook-marketplace-backend/`
-- **Frontend**: `/home/arezvov/d/projects/sbook/textbook-marketplace-frontend/`
+- **Backend** (this repo): `/home/arezvov/d/projects/sbook/sbook-backend/`
+- **Frontend**: `/home/arezvov/d/projects/sbook/sbook-frontend/`
 
 ## Backend Commands
 
@@ -115,7 +115,7 @@ Step-by-step to get the full stack running locally:
 docker compose up -d                  # PostgreSQL :10543, Redis :16379
 
 # 2. Install backend dependencies
-cd /home/arezvov/d/projects/sbook/textbook-marketplace-backend
+cd /home/arezvov/d/projects/sbook/sbook-backend
 uv sync
 
 # 3. Run migrations (uses production settings with PostgreSQL from Docker)
@@ -128,7 +128,7 @@ uv run python textbook_marketplace/manage.py generate_realistic_data --textbooks
 uv run python textbook_marketplace/manage.py runserver 0.0.0.0:8000
 
 # 6. In another terminal — install and start frontend
-cd /home/arezvov/d/projects/sbook/textbook-marketplace-frontend
+cd /home/arezvov/d/projects/sbook/sbook-frontend
 pnpm install
 pnpm dev                              # http://localhost:3000
 ```
@@ -175,7 +175,7 @@ To deploy changes: merge/push to `main` branch → GitHub Actions triggers autom
 git checkout main && git merge dev && git push origin main
 
 # Deploy frontend (from frontend repo)
-cd /home/arezvov/d/projects/sbook/textbook-marketplace-frontend
+cd /home/arezvov/d/projects/sbook/sbook-frontend
 git checkout main && git merge dev && git push origin main
 ```
 
